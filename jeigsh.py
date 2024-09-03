@@ -85,4 +85,4 @@ def jeigsh(LO, k=6, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jn
     eigvecs     = (U.T[-k:,:] @ kV)
 
     #return eigvals[:k], eigvecs
-    return jnp.flip(eigvals[-k:]), eigvecs
+    return (eigvals[-k:]), eigvecs
