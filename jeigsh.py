@@ -4,10 +4,12 @@ jax.config.update("jax_enable_x64", True)
 
 import jax.numpy as jnp
 from functools import partial
+from typing import Callable
 
-@partial(jax.jit, static_argnums=(0,1))
-def jeigsh(LO, k=6, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jnp.float64):
-    N=LO.shape[0]     ## matrix-size
+##def jeigsh(LO:Callable, k=6, N:int=1000, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jnp.float64):
+#@partial(jax.jit, static_argnums=(0,2))
+def jeigsh(LO:Callable, v_0:jax.Array, k:int=6, δ=1.E-14, Largest=True, DTYPE=jnp.float64):
+    N=v_0.shape[0]     ## matrix-size
     m = int((N)**(k/N)) + (1-k//N)*k*(N.bit_length()-1)
     #c = jax.lax.select(Largest, -1., 1.)
 
@@ -19,9 +21,10 @@ def jeigsh(LO, k=6, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jn
         V_   -= (jnp.conj(v) @ V_) * v
         return [ V_, K ]
 
-    @jax.jit
+    #@jax.jit
     def Lanczos_( Data ):
         #### inputs
+        #V_, K, α, β, _, δ, i, LO = Data
         V_, K, α, β, _, δ, i = Data
 
         #### compute
@@ -43,6 +46,7 @@ def jeigsh(LO, k=6, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jn
         β   = β.at[ i-1 ].set(β_)
         α   = α.at[ i-1 ].set(α_)
 
+        #return [ AV, K, α, β, β_, δ, i+1, LO ]
         return [ AV, K, α, β, β_, δ, i+1 ]
 
     @jax.jit
@@ -51,6 +55,7 @@ def jeigsh(LO, k=6, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jn
         i (iteration)
         max_i (maxiteration)
         """
+        #_, K, _, _, β_, δ, i, LO = Data
         _, K, _, _, β_, δ, i = Data
 
         def check_(check_values):
@@ -61,11 +66,12 @@ def jeigsh(LO, k=6, δ=1.E-14, Largest=True, key=jax.random.PRNGKey(0), DTYPE=jn
     ##########################################
 
     #### initialize data required for calculation
-    v_0  = jax.random.uniform(key, (N,), dtype=DTYPE)  ## initial guess eigenvector
+    #v_0  = jax.random.uniform(key, (N,), dtype=DTYPE)  ## initial guess eigenvector
     kV   = jnp.zeros((m+1, N), dtype=DTYPE)            ## Krylov Vectors
     α    = jnp.zeros(m, dtype=DTYPE)                   ## diag of Lanczos Matrix
     β    = jnp.zeros(m, dtype=DTYPE)                   ## off-diag of Lanczos Matrix
 
+    #Data        = [v_0, kV, α, β, 1.0, δ, 1, LO]
     Data        = [v_0, kV, α, β, 1.0, δ, 1]
     v_f, kV, α, β, _, _, iter = jax.lax.while_loop(if_, Lanczos_, Data)
     kV          = kV.at[iter,:].set(v_f)
